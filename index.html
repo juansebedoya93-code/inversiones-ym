@@ -1159,6 +1159,110 @@ table{border-collapse:collapse;border-spacing:0}
   </div>
 </div>
 
+<!-- ============ MODAL FUSIONAR Y RENOVAR ============ -->
+<div id="modal-fusion" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:flex-start;justify-content:center;z-index:9999;padding:1rem;overflow-y:auto">
+  <div class="bg-white rounded-lg shadow-2xl w-full max-w-md my-4">
+    <div class="bg-orange-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+      <h3 class="text-xl font-bold">🔀 Fusionar y Renovar Préstamos</h3>
+      <button onclick="cerrarModal('modal-fusion')" class="text-2xl hover:text-red-300">×</button>
+    </div>
+    <div class="p-6 space-y-4">
+
+      <!-- Info del cliente y préstamos a fusionar -->
+      <div class="bg-orange-50 border-l-4 border-orange-500 rounded p-4 text-sm">
+        <div class="text-xs font-bold text-orange-500 uppercase tracking-wide mb-2">📋 Préstamos activos que se van a fusionar</div>
+        <div id="fusion-info" class="space-y-1"></div>
+      </div>
+
+      <!-- Nuevo capital -->
+      <div>
+        <label class="block text-sm font-bold mb-1">💰 Capital del nuevo préstamo unificado *</label>
+        <input type="number" id="fusion-capital" min="0" step="1000" oninput="calcularPreviewFusion()" class="w-full p-2 border-2 border-orange-400 rounded text-lg font-bold" />
+        <div class="mt-2 p-2 bg-slate-50 border rounded text-xs text-slate-600 space-y-1">
+          <div>• <strong>Si el cliente solo unifica sin recibir plata</strong> → pon el valor igual al saldo total combinado.</div>
+          <div>• <strong>Si el cliente va a recibir plata adicional</strong> → pon un valor mayor. La diferencia se entrega en efectivo.</div>
+        </div>
+      </div>
+
+      <!-- Interés -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Interés en $</label>
+          <input type="number" id="fusion-interes-pesos" min="0" step="1000" oninput="calcularPreviewFusion()" class="w-full p-2 border rounded" placeholder="0" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Interés en %</label>
+          <input type="number" id="fusion-interes-pct" min="0" step="any" oninput="calcularPreviewFusion()" class="w-full p-2 border rounded" placeholder="0" />
+        </div>
+      </div>
+      <p class="text-xs text-slate-400 -mt-2">Llena uno de los dos campos, el otro se calcula solo.</p>
+
+      <!-- Cuotas y tipo -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Número de cuotas</label>
+          <input type="number" id="fusion-cuotas" min="1" oninput="calcularPreviewFusion()" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Tipo de Cobro</label>
+          <select id="fusion-tipo" onchange="calcularPreviewFusion()" class="w-full p-2 border rounded">
+            <option value="diario">📅 Diario</option>
+            <option value="semanal">📆 Semanal</option>
+            <option value="quincenal">🗓️ Quincenal</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fecha -->
+      <div>
+        <label class="block text-sm font-semibold mb-1">Fecha del nuevo préstamo</label>
+        <input type="date" id="fusion-fecha" class="w-full p-2 border rounded" />
+      </div>
+
+      <!-- Preview -->
+      <div id="fusion-preview" class="bg-amber-50 border border-amber-300 rounded p-4 text-sm"></div>
+
+      <!-- Efectivo -->
+      <div class="bg-green-50 border border-green-300 rounded p-4">
+        <div class="text-xs font-bold text-green-700 uppercase tracking-wide mb-3">💵 Efectivo entregado al cliente</div>
+        <div id="fusion-efectivo-explicacion" class="text-sm mb-3"></div>
+        <div class="space-y-2">
+          <label class="flex items-start gap-3 cursor-pointer p-2 rounded border border-transparent hover:border-green-400 hover:bg-green-100">
+            <input type="radio" name="fusion-efectivo-tipo" id="fusion-ef-auto" value="auto" checked onchange="calcularPreviewFusion()" class="accent-green-600 mt-0.5" />
+            <div>
+              <div class="text-sm font-semibold text-green-800">Sí — se entregó el efectivo calculado</div>
+              <div class="text-xs text-slate-500">El sistema registrará exactamente lo que se calculó.</div>
+            </div>
+          </label>
+          <label class="flex items-start gap-3 cursor-pointer p-2 rounded border border-transparent hover:border-yellow-400 hover:bg-yellow-50">
+            <input type="radio" name="fusion-efectivo-tipo" id="fusion-ef-manual" value="manual" onchange="calcularPreviewFusion()" class="accent-yellow-600 mt-0.5" />
+            <div>
+              <div class="text-sm font-semibold text-yellow-800">Sí — pero el monto fue diferente</div>
+              <div class="text-xs text-slate-500">Usa esto si se entregó un monto distinto al calculado.</div>
+            </div>
+          </label>
+          <label class="flex items-start gap-3 cursor-pointer p-2 rounded border border-transparent hover:border-red-400 hover:bg-red-50">
+            <input type="radio" name="fusion-efectivo-tipo" id="fusion-ef-no" value="no" onchange="calcularPreviewFusion()" class="accent-red-600 mt-0.5" />
+            <div>
+              <div class="text-sm font-semibold text-red-800">No — no se entregó ningún efectivo</div>
+              <div class="text-xs text-slate-500">Solo se unificaron los saldos. No recibió dinero en mano.</div>
+            </div>
+          </label>
+        </div>
+        <div id="fusion-ef-manual-campo" class="hidden mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded">
+          <label class="block text-sm font-semibold text-yellow-800 mb-1">¿Cuánto efectivo se entregó en realidad? ($)</label>
+          <input type="number" id="fusion-efectivo-manual" min="0" step="1000" oninput="calcularPreviewFusion()" class="w-full p-2 border-2 border-yellow-400 rounded text-lg font-bold" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-end pt-3 border-t">
+        <button type="button" onclick="cerrarModal('modal-fusion')" class="bg-slate-400 text-white px-4 py-2 rounded">Cancelar</button>
+        <button type="button" onclick="confirmarFusion()" class="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded font-bold">✅ Confirmar Fusión</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL EDITAR PRÉSTAMO ============ -->
 <div id="modal-editar-prestamo" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:flex-start;justify-content:center;z-index:9999;padding:1rem;overflow-y:auto" style="z-index:300">
   <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg my-4">
@@ -1565,7 +1669,7 @@ window.cerrarModal = function(id) {
 // Cerrar cualquier modal abierto con Escape
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
-  const modales = ['modal-detalle','modal-prestamo','modal-cliente','modal-pago','modal-gasto','modal-desglose','modal-editar-prestamo','modal-papeleria'];
+  const modales = ['modal-detalle','modal-prestamo','modal-cliente','modal-pago','modal-gasto','modal-desglose','modal-editar-prestamo','modal-papeleria','modal-fusion'];
   modales.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.classList.contains('hidden')) {
@@ -2123,6 +2227,19 @@ window.verHistorialCliente = function(id) {
   }
   if (c.referencias) html += `<div class="mt-4"><strong>Referencias:</strong><br>${c.referencias.replace(/\n/g,'<br>')}</div>`;
   if (c.notas) html += `<div class="mt-2"><strong>Notas:</strong><br>${c.notas.replace(/\n/g,'<br>')}</div>`;
+  // Botón fusionar si tiene 2+ préstamos activos
+  const activosFusion = prest.filter(p => p.estado === 'activo' || p.estado === 'mora');
+  if (activosFusion.length >= 2) {
+    const saldoTotal = activosFusion.reduce((sum, p) => {
+      const pagado = (p.cuotas||[]).reduce((s,c)=>s+(c.montoPagado||0),0);
+      return sum + (p.totalAPagar - pagado);
+    }, 0);
+    html += `<div class="mt-4 p-3 bg-orange-50 border border-orange-400 rounded">
+      <div class="text-sm font-bold text-orange-800 mb-1">⚠️ Este cliente tiene ${activosFusion.length} préstamos activos</div>
+      <div class="text-sm text-orange-700 mb-2">Saldo combinado de los ${activosFusion.length} préstamos: <strong>${fmt(saldoTotal)}</strong></div>
+      <button onclick="abrirFusionRenovacion('${id}')" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-bold text-sm">🔀 Fusionar y Renovar en un solo préstamo</button>
+    </div>`;
+  }
   document.getElementById('contenido-detalle').innerHTML = html;
   abrirModal('modal-detalle');
 };
@@ -2764,6 +2881,162 @@ window.confirmarRenovacion = async function() {
     });
     await auditar('renovar_prestamo', `Cliente: ${cli?.nombre}, Nuevo total: ${fmt(totalNuevo)}, Efectivo: ${fmt(efectivo)}`);
     cerrarModal('modal-renovacion');
+    setTimeout(() => verDetallePrestamo(docRef.id), 600);
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+// ============================================================
+// FUSIÓN DE PRÉSTAMOS
+// ============================================================
+window._fusionClienteId = null;
+
+window.abrirFusionRenovacion = function(clienteId) {
+  const cli = estado.clientes.find(c=>c.id===clienteId);
+  if (!cli) return;
+  window._fusionClienteId = clienteId;
+  const activos = estado.prestamos.filter(p => p.clienteId===clienteId && (p.estado==='activo'||p.estado==='mora'));
+  let saldoTotal = 0;
+  let infoHtml = `<div class="font-bold text-orange-900 text-base mb-2">👤 ${cli.nombre}</div>`;
+  activos.forEach((p, i) => {
+    const pagado = (p.cuotas||[]).reduce((s,c)=>s+(c.montoPagado||0),0);
+    const saldo = p.totalAPagar - pagado;
+    saldoTotal += saldo;
+    infoHtml += `<div class="flex justify-between border-b pb-1 mb-1">
+      <span class="text-slate-600">Préstamo ${i+1} (${fechaBonita(p.fechaDesembolso)}):</span>
+      <strong class="text-red-700">${fmt(saldo)} pendiente</strong>
+    </div>`;
+  });
+  infoHtml += `<div class="flex justify-between pt-1 font-bold text-orange-800">
+    <span>Total saldo combinado:</span><strong class="text-lg">${fmt(saldoTotal)}</strong>
+  </div>
+  <div class="mt-2 text-xs text-orange-600 bg-orange-100 rounded p-2">ℹ️ Los ${activos.length} préstamos quedarán marcados como "renovado" y se creará uno solo nuevo.</div>`;
+  document.getElementById('fusion-info').innerHTML = infoHtml;
+  // Valores por defecto
+  const primerActivo = activos[0];
+  document.getElementById('fusion-capital').value = saldoTotal;
+  document.getElementById('fusion-cuotas').value = primerActivo.numCuotas||30;
+  document.getElementById('fusion-tipo').value = primerActivo.tipoCobro||'diario';
+  document.getElementById('fusion-fecha').value = hoy();
+  document.getElementById('fusion-interes-pesos').value = '';
+  document.getElementById('fusion-interes-pct').value = primerActivo.interes ? primerActivo.interes.toFixed(1) : '';
+  // Reset radio
+  document.getElementById('fusion-ef-no').checked = true;
+  calcularPreviewFusion();
+  cerrarModal('modal-detalle');
+  abrirModal('modal-fusion');
+};
+
+window.calcularPreviewFusion = function() {
+  const clienteId = window._fusionClienteId;
+  if (!clienteId) return;
+  const activos = estado.prestamos.filter(p => p.clienteId===clienteId && (p.estado==='activo'||p.estado==='mora'));
+  const saldoTotal = activos.reduce((sum,p) => {
+    const pagado = (p.cuotas||[]).reduce((s,c)=>s+(c.montoPagado||0),0);
+    return sum + (p.totalAPagar - pagado);
+  }, 0);
+  const montoNuevo = parseFloat(document.getElementById('fusion-capital').value)||saldoTotal;
+  const interesPesos = parseFloat(document.getElementById('fusion-interes-pesos').value)||0;
+  const interesPct = parseFloat(document.getElementById('fusion-interes-pct').value)||0;
+  const interesReal = interesPesos > 0 ? interesPesos : Math.round((interesPct/100)*montoNuevo);
+  const totalNuevo = montoNuevo + interesReal;
+  const cuotas = parseInt(document.getElementById('fusion-cuotas').value)||30;
+  const cuotaVal = cuotas > 0 ? Math.round(totalNuevo/cuotas) : 0;
+  const pctReal = montoNuevo > 0 ? (interesReal/montoNuevo)*100 : 0;
+  if (interesPesos > 0) document.getElementById('fusion-interes-pct').value = pctReal.toFixed(1);
+  else if (interesPct > 0) document.getElementById('fusion-interes-pesos').value = interesReal;
+  const efectivoAuto = Math.max(0, montoNuevo - saldoTotal);
+  const efTipo = (document.querySelector('input[name="fusion-efectivo-tipo"]:checked')||{}).value||'no';
+  const campoManual = document.getElementById('fusion-ef-manual-campo');
+  if (campoManual) campoManual.classList.toggle('hidden', efTipo !== 'manual');
+  let efectivo;
+  if (efTipo === 'no') efectivo = 0;
+  else if (efTipo === 'manual') efectivo = parseFloat(document.getElementById('fusion-efectivo-manual').value)||0;
+  else efectivo = efectivoAuto;
+  // Explicación efectivo
+  const expEl = document.getElementById('fusion-efectivo-explicacion');
+  if (expEl) {
+    if (montoNuevo <= saldoTotal) {
+      expEl.innerHTML = `<div class="p-2 bg-slate-100 border border-slate-300 rounded text-slate-700">ℹ️ El nuevo capital cubre el saldo combinado — el cliente no recibe efectivo adicional.</div>`;
+    } else {
+      expEl.innerHTML = `<div class="p-2 bg-green-100 border border-green-400 rounded text-green-800">✅ El cliente recibirá <strong class="text-lg">${fmt(efectivoAuto)}</strong> en efectivo (diferencia entre el nuevo capital y el saldo total).</div>`;
+    }
+  }
+  const efResumen = efectivo > 0
+    ? `<div class="flex justify-between text-green-800"><span>💸 Efectivo que recibe el cliente:</span><strong class="text-lg">${fmt(efectivo)}</strong></div>`
+    : `<div class="flex justify-between text-slate-500"><span>🚫 Efectivo entregado:</span><strong>$0</strong></div>`;
+  document.getElementById('fusion-preview').innerHTML = `
+    <div class="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">📊 Resumen del préstamo unificado</div>
+    <div class="space-y-1 text-sm">
+      <div class="flex justify-between"><span class="text-slate-600">Nuevo capital:</span><strong>${fmt(montoNuevo)}</strong></div>
+      <div class="flex justify-between"><span class="text-slate-600">Interés (${pctReal.toFixed(1)}%):</span><strong>+ ${fmt(interesReal)}</strong></div>
+      <div class="flex justify-between border-t pt-1 mt-1"><span class="font-semibold">Total a pagar:</span><strong class="text-blue-700">${fmt(totalNuevo)}</strong></div>
+      <div class="flex justify-between"><span class="text-slate-600">Valor de cada cuota:</span><strong>${fmt(cuotaVal)} x ${cuotas}</strong></div>
+    </div>
+    <div class="mt-3 pt-3 border-t border-amber-300 space-y-1 text-sm">
+      <div class="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">💱 Cálculo del efectivo</div>
+      <div class="flex justify-between"><span class="text-slate-600">Nuevo capital:</span><strong>${fmt(montoNuevo)}</strong></div>
+      <div class="flex justify-between text-red-700"><span>➖ Saldo combinado:</span><strong>- ${fmt(saldoTotal)}</strong></div>
+      <div class="flex justify-between border-t pt-1 mt-1">${efResumen}</div>
+    </div>`;
+};
+
+window.confirmarFusion = async function() {
+  const clienteId = window._fusionClienteId;
+  if (!clienteId) return;
+  const cli = estado.clientes.find(c=>c.id===clienteId);
+  const activos = estado.prestamos.filter(p => p.clienteId===clienteId && (p.estado==='activo'||p.estado==='mora'));
+  const saldoTotal = activos.reduce((sum,p) => {
+    const pagado = (p.cuotas||[]).reduce((s,c)=>s+(c.montoPagado||0),0);
+    return sum + (p.totalAPagar - pagado);
+  }, 0);
+  const montoNuevo = parseFloat(document.getElementById('fusion-capital').value)||saldoTotal;
+  const interesPesos = parseFloat(document.getElementById('fusion-interes-pesos').value)||0;
+  const interesPct = parseFloat(document.getElementById('fusion-interes-pct').value)||0;
+  const interesReal = interesPesos > 0 ? interesPesos : Math.round((interesPct/100)*montoNuevo);
+  const numCuotas = parseInt(document.getElementById('fusion-cuotas').value)||30;
+  const tipoCobro = document.getElementById('fusion-tipo').value;
+  const fechaDes = document.getElementById('fusion-fecha').value;
+  const totalNuevo = montoNuevo + interesReal;
+  const cuotaD = Math.round(totalNuevo/numCuotas);
+  const interesPct2 = montoNuevo > 0 ? (interesReal/montoNuevo)*100 : 0;
+  const efTipo = (document.querySelector('input[name="fusion-efectivo-tipo"]:checked')||{}).value||'no';
+  const efectivoAuto = Math.max(0, montoNuevo - saldoTotal);
+  let efectivo;
+  if (efTipo === 'no') efectivo = 0;
+  else if (efTipo === 'manual') efectivo = parseFloat(document.getElementById('fusion-efectivo-manual').value)||0;
+  else efectivo = efectivoAuto;
+  const efMsg = efectivo > 0 ? `💵 Efectivo entregado: ${fmt(efectivo)}` : '🚫 No se entrega efectivo';
+  const idsAFusionar = activos.map(p=>p.id).join(', ');
+  if (!confirm(`¿Confirmar fusión de ${activos.length} préstamos?\n\n👤 Cliente: ${cli?.nombre||''}\n\n📋 NUEVO PRÉSTAMO UNIFICADO\nCapital: ${fmt(montoNuevo)}\nTotal a pagar: ${fmt(totalNuevo)}\nCuotas: ${numCuotas} ${tipoCobro}(s)\n\n💱 SALDO COMBINADO DESCONTADO: ${fmt(saldoTotal)}\n${efMsg}\n\nLos ${activos.length} préstamos anteriores quedarán como "renovado".\n\n¿Desea continuar?`)) return;
+  try {
+    const dVence = new Date(fechaDes + 'T00:00:00');
+    if (tipoCobro === 'semanal') dVence.setDate(dVence.getDate() + numCuotas*7);
+    else if (tipoCobro === 'quincenal') dVence.setDate(dVence.getDate() + numCuotas*15);
+    else dVence.setDate(dVence.getDate() + numCuotas);
+    const fechaVence = dVence.toISOString().slice(0,10);
+    const cuotasNuevas = tipoCobro === 'semanal' ? generarCuotasSemanales(fechaDes, cuotaD, numCuotas)
+                       : tipoCobro === 'quincenal' ? generarCuotasQuincenales(fechaDes, cuotaD, numCuotas)
+                       : generarCuotas(fechaDes, cuotaD, numCuotas);
+    // 1. Marcar todos los préstamos activos como renovado
+    for (const p of activos) {
+      await updateDoc(doc(dbFS, 'prestamos', p.id), { estado: 'renovado', renovadoEn: fechaDes });
+    }
+    // 2. Crear nuevo préstamo unificado
+    const notaFusion = efectivo > 0
+      ? `Fusión de ${activos.length} préstamos. Saldo combinado: ${fmt(saldoTotal)}. Efectivo entregado: ${fmt(efectivo)}.`
+      : `Fusión de ${activos.length} préstamos. Saldo combinado: ${fmt(saldoTotal)}. No se entregó efectivo.`;
+    const docRef = await addDoc(collection(dbFS, 'prestamos'), {
+      clienteId, clienteNombre: cli?.nombre||'',
+      monto: montoNuevo, interes: interesPct2, totalAPagar: totalNuevo,
+      cuotaDiaria: cuotaD, numCuotas, tipoCobro,
+      fechaDesembolso: fechaDes, fechaVence,
+      cuotas: cuotasNuevas, estado: 'activo',
+      notas: notaFusion,
+      prestamosAnteriores: activos.map(p=>p.id),
+      createdAt: serverTimestamp(), createdBy: estado.user.uid
+    });
+    await auditar('fusion_prestamos', `Cliente: ${cli?.nombre}, Préstamos fusionados: ${idsAFusionar}, Nuevo total: ${fmt(totalNuevo)}, Efectivo: ${fmt(efectivo)}`);
+    cerrarModal('modal-fusion');
     setTimeout(() => verDetallePrestamo(docRef.id), 600);
   } catch(e) { alert('Error: '+e.message); }
 };
