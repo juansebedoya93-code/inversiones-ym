@@ -540,6 +540,32 @@ table{border-collapse:collapse;border-spacing:0}
       </table>
     </div>
   </div>
+
+  <!-- Sección Préstamos Renovados -->
+  <div class="mt-4">
+    <button onclick="togglePrestamosRenovados()" class="flex items-center gap-2 text-base font-bold text-blue-700 mb-2 hover:underline">
+      <span id="icon-prest-renovados">▶</span> 🔄 Préstamos Renovados (<span id="count-prest-renovados">0</span>)
+    </button>
+    <div id="tabla-prest-renovados-wrap" class="hidden bg-white rounded-lg shadow overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-blue-100 text-blue-800">
+          <tr>
+            <th class="p-3 text-center">#</th>
+            <th class="p-3 text-left">Cliente</th>
+            <th class="p-3 text-right">Capital</th>
+            <th class="p-3 text-right">Total a Pagar</th>
+            <th class="p-3 text-right">Cuota</th>
+            <th class="p-3 text-center">Desembolso</th>
+            <th class="p-3 text-center">Renovado</th>
+            <th class="p-3 text-center">Progreso</th>
+            <th class="p-3 text-center">Estado</th>
+            <th class="p-3 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-prestamos-renovados"></tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
 <!-- PAGOS DEL DÍA -->
@@ -568,6 +594,7 @@ table{border-collapse:collapse;border-spacing:0}
     <table class="w-full text-sm">
       <thead class="bg-slate-200 text-slate-700">
         <tr>
+          <th class="p-3 text-center">#</th>
           <th class="p-3 text-left">Cliente</th>
           <th class="p-3 text-left">Teléfono</th>
           <th class="p-3 text-right">Saldo</th>
@@ -577,6 +604,40 @@ table{border-collapse:collapse;border-spacing:0}
         </tr>
       </thead>
       <tbody id="tabla-pagos"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SOLICITUDES DE PRÉSTAMO (cobrador registra / admin aprueba) -->
+<section id="seccion-solicitudes" class="seccion hidden">
+  <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+    <h2 id="titulo-solicitudes" class="text-2xl font-bold text-slate-800">Solicitudes de Préstamo</h2>
+    <button onclick="abrirModalSolicitud()" id="btn-nueva-solicitud" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold">➕ Registrar Préstamo</button>
+  </div>
+  <p id="desc-solicitudes" class="text-sm text-slate-500 mb-3"></p>
+  <div class="flex gap-2 mb-4 flex-wrap items-center">
+    <span class="text-sm font-semibold text-slate-600">Ver:</span>
+    <button onclick="window.filtroSolicitudes='pendiente'; renderSolicitudes();" id="fs-pendiente" class="px-3 py-1 rounded text-sm font-semibold">⏳ Pendientes</button>
+    <button onclick="window.filtroSolicitudes='aprobada'; renderSolicitudes();" id="fs-aprobada" class="px-3 py-1 rounded text-sm font-semibold">✅ Aprobados</button>
+    <button onclick="window.filtroSolicitudes='rechazada'; renderSolicitudes();" id="fs-rechazada" class="px-3 py-1 rounded text-sm font-semibold">❌ Rechazados</button>
+    <button onclick="window.filtroSolicitudes='todas'; renderSolicitudes();" id="fs-todas" class="px-3 py-1 rounded text-sm font-semibold">Todos</button>
+  </div>
+  <div class="bg-white rounded-lg shadow overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-200 text-slate-700">
+        <tr>
+          <th class="p-3 text-center">#</th>
+          <th class="p-3 text-center">Registrado</th>
+          <th class="p-3 text-left">Cliente</th>
+          <th class="p-3 text-left">Registrado por</th>
+          <th class="p-3 text-right">Monto</th>
+          <th class="p-3 text-right">Total a Pagar</th>
+          <th class="p-3 text-right">Cuota</th>
+          <th class="p-3 text-center">Estado</th>
+          <th class="p-3 text-center">Acción</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-solicitudes"></tbody>
     </table>
   </div>
 </section>
@@ -1315,6 +1376,144 @@ table{border-collapse:collapse;border-spacing:0}
   </div>
 </div>
 
+<!-- ============ MODAL SOLICITUD (COBRADOR) ============ -->
+<div id="modal-solicitud" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:flex-start;justify-content:center;z-index:9999;padding:1rem;overflow-y:auto">
+  <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl my-4">
+    <div class="bg-green-700 text-white p-4 rounded-t-lg flex justify-between items-center">
+      <h3 class="text-xl font-bold">📝 Registrar Préstamo Nuevo</h3>
+      <button onclick="cerrarModal('modal-solicitud')" class="text-2xl hover:text-red-300">×</button>
+    </div>
+    <form id="form-solicitud" class="p-6 space-y-3">
+      <div class="bg-amber-50 border-l-4 border-amber-500 p-3 text-sm text-amber-800">
+        ⏳ Este préstamo quedará <strong>pendiente</strong> hasta que el administrador lo revise y lo apruebe.
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Cliente *</label>
+        <div class="flex gap-2 mb-2">
+          <label class="flex items-center gap-2 cursor-pointer border rounded px-3 py-2 flex-1 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-500">
+            <input type="radio" name="sol-modo-cliente" id="sol-modo-existente" value="existente" onchange="toggleSolCliente()" class="accent-emerald-600" />
+            <span class="text-sm">👤 Cliente existente</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer border rounded px-3 py-2 flex-1 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-500">
+            <input type="radio" name="sol-modo-cliente" id="sol-modo-nuevo" value="nuevo" onchange="toggleSolCliente()" class="accent-emerald-600" />
+            <span class="text-sm">➕ Cliente nuevo</span>
+          </label>
+        </div>
+        <div id="sol-cli-existente">
+          <select id="sol-cliente" class="w-full p-2 border rounded">
+            <option value="">-- Selecciona --</option>
+          </select>
+        </div>
+        <div id="sol-cli-nuevo" class="hidden bg-emerald-50 border border-emerald-200 rounded p-3">
+          <div class="grid md:grid-cols-2 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold mb-1">Nombre Completo *</label>
+              <input type="text" id="sol-cn-nombre" oninput="this.value=this.value.replace(/(?:^|\s)\S/g,c=>c.toUpperCase())" class="w-full p-2 border rounded" />
+            </div>
+            <div><label class="block text-xs font-semibold mb-1">Cédula</label><input type="text" id="sol-cn-cedula" class="w-full p-2 border rounded" /></div>
+            <div><label class="block text-xs font-semibold mb-1">Teléfono</label><input type="tel" id="sol-cn-telefono" class="w-full p-2 border rounded" /></div>
+            <div><label class="block text-xs font-semibold mb-1">Teléfono Alterno</label><input type="tel" id="sol-cn-telefono2" class="w-full p-2 border rounded" /></div>
+            <div><label class="block text-xs font-semibold mb-1">Dirección</label><input type="text" id="sol-cn-direccion" class="w-full p-2 border rounded" /></div>
+            <div class="md:col-span-2"><label class="block text-xs font-semibold mb-1">Ocupación / Negocio</label><input type="text" id="sol-cn-ocupacion" class="w-full p-2 border rounded" /></div>
+            <div class="md:col-span-2"><label class="block text-xs font-semibold mb-1">Referencias</label><textarea id="sol-cn-referencias" rows="2" class="w-full p-2 border rounded"></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Tipo de Cobro *</label>
+        <select id="sol-tipo" onchange="calcularPreviewSolicitud()" class="w-full p-2 border rounded">
+          <option value="diario">📅 Diario</option>
+          <option value="semanal">📆 Semanal</option>
+          <option value="quincenal">🗓️ Quincenal</option>
+        </select>
+      </div>
+      <div class="grid md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Monto *</label>
+          <input type="number" id="sol-monto" required min="1000" step="1000" oninput="solInteresDesde('pct')" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Cuotas *</label>
+          <input type="number" id="sol-cuotas" required min="1" oninput="calcularPreviewSolicitud()" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Interés en $</label>
+          <input type="number" id="sol-interes-pesos" min="0" step="1000" oninput="solInteresDesde('pesos')" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Interés en %</label>
+          <input type="number" id="sol-interes-pct" min="0" step="any" oninput="solInteresDesde('pct')" class="w-full p-2 border rounded" />
+        </div>
+      </div>
+      <div id="sol-preview" class="bg-slate-50 p-3 rounded border text-sm"></div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Notas</label>
+        <textarea id="sol-notas" rows="2" class="w-full p-2 border rounded" placeholder="Ej: cliente referido por..., se entrega mañana..."></textarea>
+      </div>
+      <div class="flex gap-2 justify-end pt-3 border-t">
+        <button type="button" onclick="cerrarModal('modal-solicitud')" class="bg-slate-400 text-white px-4 py-2 rounded">Cancelar</button>
+        <button type="submit" id="btn-guardar-solicitud" class="bg-green-700 text-white px-4 py-2 rounded font-semibold">💾 Registrar Préstamo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL APROBAR SOLICITUD (ADMIN) ============ -->
+<div id="modal-aprobar" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:flex-start;justify-content:center;z-index:9999;padding:1rem;overflow-y:auto">
+  <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl my-4">
+    <div class="bg-amber-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+      <h3 class="text-xl font-bold">🔍 Revisar Préstamo Pendiente</h3>
+      <button onclick="cerrarModal('modal-aprobar')" class="text-2xl hover:text-red-300">×</button>
+    </div>
+    <form id="form-aprobar" class="p-6 space-y-3">
+      <input type="hidden" id="apr-id" />
+      <div id="apr-info" class="bg-slate-50 border rounded p-3 text-sm"></div>
+      <div id="apr-cliente-box"></div>
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wide pt-2">💵 Datos del préstamo (puedes corregirlos antes de aprobar)</div>
+      <div class="grid md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Tipo de Cobro</label>
+          <select id="apr-tipo" onchange="calcularPreviewAprobacion()" class="w-full p-2 border rounded">
+            <option value="diario">📅 Diario</option>
+            <option value="semanal">📆 Semanal</option>
+            <option value="quincenal">🗓️ Quincenal</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Fecha Desembolso *</label>
+          <input type="date" id="apr-fecha" required oninput="calcularPreviewAprobacion()" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Monto *</label>
+          <input type="number" id="apr-monto" required min="1000" step="1000" oninput="aprInteresDesde('pct')" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Cuotas *</label>
+          <input type="number" id="apr-cuotas" required min="1" oninput="calcularPreviewAprobacion()" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Interés en $</label>
+          <input type="number" id="apr-interes-pesos" min="0" step="1000" oninput="aprInteresDesde('pesos')" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Interés en %</label>
+          <input type="number" id="apr-interes-pct" min="0" step="any" oninput="aprInteresDesde('pct')" class="w-full p-2 border rounded" />
+        </div>
+      </div>
+      <div id="apr-preview" class="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm"></div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">Notas</label>
+        <textarea id="apr-notas" rows="2" class="w-full p-2 border rounded"></textarea>
+      </div>
+      <div class="flex gap-2 justify-end pt-3 border-t flex-wrap">
+        <button type="button" onclick="cerrarModal('modal-aprobar')" class="bg-slate-400 text-white px-4 py-2 rounded">Cancelar</button>
+        <button type="button" onclick="rechazarSolicitud()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold">❌ Rechazar</button>
+        <button type="submit" id="btn-aprobar" class="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded font-semibold">✅ Aprobar Préstamo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ============ FIREBASE SDK Y LÓGICA ============ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1355,12 +1554,14 @@ window.estado = {
   prestamos: [],
   gastos: [],
   papeleria: [],
+  solicitudes: [],
   usuarios: [],
   config: { interes: 20, cuotas: 30, mora: 20 }
 };
 window.filtroPrestamos = 'todos';
 window.filtroPagosTipo = 'todos';
 window.filtroTipoPrestamo = 'todos';
+window.filtroSolicitudes = 'pendiente';
 let unsubs = [];
 
 // ============================================================
@@ -1607,6 +1808,7 @@ function construirMenu() {
     tabs.push(['dashboard', '📊 Dashboard']);
     tabs.push(['clientes', '👥 Clientes']);
     tabs.push(['prestamos', '💵 Préstamos']);
+    tabs.push(['solicitudes', '⏳ Por Aprobar <span id="badge-solicitudes"></span>']);
     tabs.push(['pagos', '📅 Pagos del Día']);
     tabs.push(['papeleria', '🗂️ Papelería']);
     tabs.push(['gastos', '💸 Gastos']);
@@ -1616,10 +1818,12 @@ function construirMenu() {
     tabs.push(['config', '⚙️ Config']);
   } else if (estado.rol === 'cobrador') {
     tabs.push(['pagos', '📅 Pagos del Día']);
+    tabs.push(['solicitudes', '📝 Nuevo Préstamo <span id="badge-solicitudes"></span>']);
     tabs.push(['papeleria', '🗂️ Papelería']);
   }
   nav.innerHTML = tabs.map(([id, label]) => `<button onclick="cambiarTab('${id}')" id="tab-${id}" class="tab-btn px-3 py-2 rounded-t font-semibold text-sm">${label}</button>`).join('');
   cambiarTab(tabs[0][0]);
+  actualizarBadgeSolicitudes();
 
   // Ocultar botones según rol
   if (estado.rol === 'cobrador') {
@@ -1651,6 +1855,7 @@ window.cambiarTab = function(tab) {
   if (tab === 'usuarios') renderUsuarios();
   if (tab === 'auditoria') renderAuditoria();
   if (tab === 'config') cargarConfig();
+  if (tab === 'solicitudes') renderSolicitudes();
 };
 
 window.abrirModal = function(id) {
@@ -1669,7 +1874,7 @@ window.cerrarModal = function(id) {
 // Cerrar cualquier modal abierto con Escape
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
-  const modales = ['modal-detalle','modal-prestamo','modal-cliente','modal-pago','modal-gasto','modal-desglose','modal-editar-prestamo','modal-papeleria','modal-fusion'];
+  const modales = ['modal-detalle','modal-prestamo','modal-cliente','modal-pago','modal-gasto','modal-desglose','modal-editar-prestamo','modal-papeleria','modal-fusion','modal-solicitud','modal-aprobar'];
   modales.forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.classList.contains('hidden')) {
@@ -1814,6 +2019,7 @@ window.mostrarCajaHoy = function() {
       <h4 class="font-bold text-slate-700 mb-2">💰 Pagos recibidos hoy (${pagosHoy.length})</h4>
       <table class="w-full text-sm mb-4 border-collapse">
         <thead><tr class="bg-slate-100 text-slate-600">
+          <th class="p-2 text-center">#</th>
           <th class="p-2 text-left">Cliente</th>
           <th class="p-2 text-left">Cuota</th>
           <th class="p-2 text-center">Hora</th>
@@ -1822,6 +2028,7 @@ window.mostrarCajaHoy = function() {
         <tbody>
           ${pagosHoy.map((r, i) => `
             <tr class="border-b hover:bg-slate-50">
+              <td class="p-2 text-center text-slate-500 font-semibold">${i+1}</td>
               <td class="p-2 font-semibold">${r.nombre}</td>
               <td class="p-2 text-slate-500 text-xs">${r.cuota}</td>
               <td class="p-2 text-center text-slate-400 text-xs">${r.hora}</td>
@@ -1829,7 +2036,7 @@ window.mostrarCajaHoy = function() {
             </tr>`).join('')}
         </tbody>
         <tfoot><tr class="bg-green-50 font-bold">
-          <td class="p-2" colspan="3">Total cobrado</td>
+          <td class="p-2" colspan="4">Total cobrado</td>
           <td class="p-2 text-right text-green-700">${fmt(totalCobrado)}</td>
         </tr></tfoot>
       </table>`;
@@ -2049,6 +2256,15 @@ function iniciarSync() {
       if (!document.getElementById('seccion-usuarios').classList.contains('hidden')) renderUsuarios();
     }));
   }
+  // Solicitudes de préstamo: admin ve todas, cobrador solo las suyas
+  const qSol = estado.rol === 'admin'
+    ? collection(dbFS, 'solicitudes')
+    : query(collection(dbFS, 'solicitudes'), where('solicitadoPor', '==', estado.user.uid));
+  unsubs.push(onSnapshot(qSol, (snap) => {
+    estado.solicitudes = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    actualizarBadgeSolicitudes();
+    if (!document.getElementById('seccion-solicitudes').classList.contains('hidden')) renderSolicitudes();
+  }, (err) => console.error('Solicitudes sync error:', err)));
   // Config
   unsubs.push(onSnapshot(doc(dbFS, 'config', 'global'), (snap) => {
     if (snap.exists()) estado.config = {...estado.config, ...snap.data()};
@@ -2537,6 +2753,39 @@ function renderPrestamos() {
           </tr>`;
         }).join('');
   }
+
+  // Poblar tabla de renovados
+  const renovados = list.filter(p => p.estado === 'renovado');
+  const countRen = document.getElementById('count-prest-renovados');
+  if (countRen) countRen.textContent = renovados.length;
+  const tbodyRen = document.getElementById('tabla-prestamos-renovados');
+  if (tbodyRen) {
+    tbodyRen.innerHTML = renovados.length === 0
+      ? '<tr><td colspan="10" class="p-8 text-center text-slate-400">Sin préstamos renovados</td></tr>'
+      : renovados.map((p, i) => {
+          const cli = estado.clientes.find(c=>c.id===p.clienteId);
+          const pagC = (p.cuotas||[]).filter(c=>c.estado==='pagado').length;
+          const totalPagado = (p.cuotas||[]).reduce((s,c)=>s+(c.montoPagado||0), 0);
+          const pct = Math.round((pagC/(p.cuotas?.length||1))*100);
+          // Buscar préstamo sucesor
+          const sucesor = estado.prestamos.find(s => s.prestamoAnterior === p.id || (s.prestamosAnteriores||[]).includes(p.id));
+          return `<tr class="border-b hover:bg-blue-50">
+            <td class="p-3 text-center text-slate-500 font-semibold">${i+1}</td>
+            <td class="p-3"><div class="font-semibold">${cli?cli.nombre:'?'}</div>${badgeTipo(p.tipoCobro)}</td>
+            <td class="p-3 text-right">${fmt(p.monto)}</td>
+            <td class="p-3 text-right text-blue-700 font-bold">${fmt(p.totalAPagar)}</td>
+            <td class="p-3 text-right">${fmt(p.cuotaDiaria)}</td>
+            <td class="p-3 text-center text-xs">${fechaBonita(p.fechaDesembolso)}</td>
+            <td class="p-3 text-center text-xs">${sucesor?fechaBonita(sucesor.fechaDesembolso):'—'}</td>
+            <td class="p-3 text-center text-xs"><div class="bg-slate-200 rounded h-2 mb-1"><div class="bg-blue-400 h-2 rounded" style="width:${pct}%"></div></div>${pagC}/${p.cuotas?.length||0} <span class="text-slate-400">(${fmt(totalPagado)} cobrado)</span></td>
+            <td class="p-3 text-center"><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">🔄 Renovado</span></td>
+            <td class="p-3 text-center">
+              <button onclick="verDetallePrestamo('${p.id}')" class="text-blue-600 hover:underline text-xs mr-1">👁️ Ver</button>
+              ${sucesor?`<button onclick="verDetallePrestamo('${sucesor.id}')" class="text-emerald-600 hover:underline text-xs">➡️ Nuevo</button>`:''}
+            </td>
+          </tr>`;
+        }).join('');
+  }
 }
 
 window.renderPrestamos = renderPrestamos;
@@ -2544,6 +2793,16 @@ window.renderPrestamos = renderPrestamos;
 window.togglePrestamosPagados = function() {
   const wrap = document.getElementById('tabla-prest-pagados-wrap');
   const icon = document.getElementById('icon-prest-pagados');
+  if (wrap) {
+    const hidden = wrap.classList.contains('hidden');
+    wrap.classList.toggle('hidden');
+    if (icon) icon.textContent = hidden ? '▼' : '▶';
+  }
+};
+
+window.togglePrestamosRenovados = function() {
+  const wrap = document.getElementById('tabla-prest-renovados-wrap');
+  const icon = document.getElementById('icon-prest-renovados');
   if (wrap) {
     const hidden = wrap.classList.contains('hidden');
     wrap.classList.toggle('hidden');
@@ -3328,7 +3587,11 @@ function _renderPagosReal() {
   });
   const cajaNeta = cobrado + ingresosDia + capitalDia - gastosDia - retirosDia;
 
-  resumen.innerHTML = `Cobrado hoy: <span class="text-green-700 font-bold">${fmt(cobrado)}</span>`;
+  let numPagosDia = 0;
+  estado.prestamos.forEach(p => (p.cuotas||[]).forEach(c => {
+    if (c.fechaPago === fecha && (c.estado==='pagado'||c.estado==='parcial')) numPagosDia++;
+  }));
+  resumen.innerHTML = `Cobrado hoy: <span class="text-green-700 font-bold">${fmt(cobrado)}</span> <span class="text-slate-500 text-sm">· ${numPagosDia} pago(s) registrado(s)</span>`;
 
   const cierreEl = document.getElementById('cierre-caja');
   if (cierreEl) {
@@ -3372,6 +3635,7 @@ function _renderPagosReal() {
   // Lista de préstamos activos con saldo pendiente (para cobrar hoy)
   const activos = [];
   estado.prestamos.forEach(p => {
+    if (p.estado === 'renovado') return; // ocultar préstamos renovados
     const est = estadoPrestamo(p);
     if (est === 'pagado') return;
     const totalPagado = (p.cuotas||[]).reduce((s,c)=>s+(c.montoPagado||0), 0);
@@ -3403,15 +3667,16 @@ function _renderPagosReal() {
   activos.sort((a,b)=>(a.cli?.nombre||'').localeCompare(b.cli?.nombre||''));
 
   if (activos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">Sin préstamos activos</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">Sin préstamos activos</td></tr>';
     return;
   }
 
-  tbody.innerHTML = activos.map(({prestamo, cli, saldo, proxCuota, pagadasHoy, est}) => {
+  tbody.innerHTML = activos.map(({prestamo, cli, saldo, proxCuota, pagadasHoy, est}, idx) => {
     const mora = calcularMora(prestamo);
     const cobradoHoy = pagadasHoy.reduce((s,c)=>s+(c.montoPagado||0), 0);
     const colorFila = est==='mora' ? 'bg-red-50' : cobradoHoy>0 ? 'bg-green-50' : '';
     return `<tr class="border-b ${colorFila} hover:bg-slate-100">
+      <td class="p-3 text-center text-slate-500 font-semibold">${idx+1}</td>
       <td class="p-3">
         <div class="font-semibold">${cli?cli.nombre:'?'}${cli?.clavo?' <span class="text-xs bg-red-100 text-red-700 px-1 rounded">📌</span>':''}</div>
         ${badgeTipo(prestamo.tipoCobro)}
@@ -3427,6 +3692,381 @@ function _renderPagosReal() {
     </tr>`;
   }).join('');
 }
+
+
+// ============================================================
+// SOLICITUDES DE PRÉSTAMO (cobrador registra → admin aprueba)
+// ============================================================
+function calcularValoresPrestamo(monto, interesPesos, interesPct, numCuotas) {
+  const interesReal = interesPesos > 0 ? interesPesos : Math.round((interesPct/100)*monto);
+  const total = monto + interesReal;
+  const cuota = numCuotas > 0 ? Math.round(total/numCuotas) : 0;
+  const pct = monto > 0 ? (interesReal/monto)*100 : 0;
+  return { interesReal, total, cuota, pct };
+}
+function calcFechaVenceTipo(fechaD, num, tipo) {
+  const d = new Date(fechaD + 'T00:00:00');
+  if (tipo === 'semanal') d.setDate(d.getDate() + num * 7);
+  else if (tipo === 'quincenal') d.setDate(d.getDate() + num * 15);
+  else d.setDate(d.getDate() + num);
+  return d.toISOString().slice(0, 10);
+}
+function normTexto(t) { return (t||'').toString().trim().toLowerCase().replace(/\s+/g,' '); }
+function escHtml(t) { return (t||'').toString().replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function buscarClienteDuplicado(nombre, cedula) {
+  const ced = (cedula||'').trim();
+  if (ced) {
+    const porCed = estado.clientes.find(c => (c.cedula||'').trim() === ced);
+    if (porCed) return porCed;
+  }
+  const n = normTexto(nombre);
+  return n ? estado.clientes.find(c => normTexto(c.nombre) === n) : null;
+}
+function fechaHoraISO(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('es-CO', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+
+function actualizarBadgeSolicitudes() {
+  const el = document.getElementById('badge-solicitudes');
+  if (!el) return;
+  const n = (estado.solicitudes||[]).filter(s => s.estado === 'pendiente').length;
+  el.innerHTML = n > 0 ? `<span style="background:#dc2626;color:#fff;border-radius:9999px;padding:0 7px;font-size:11px;margin-left:4px">${n}</span>` : '';
+}
+window.actualizarBadgeSolicitudes = actualizarBadgeSolicitudes;
+
+function badgeSolicitud(s) {
+  if (s.estado === 'aprobada') return `<span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs font-semibold">✅ Aprobado</span>${s.aprobadoNombre?`<div class="text-xs text-slate-400 mt-1">por ${escHtml(s.aprobadoNombre)}</div>`:''}`;
+  if (s.estado === 'rechazada') return `<span class="bg-red-200 text-red-800 px-2 py-1 rounded text-xs font-semibold">❌ Rechazado</span>${s.motivoRechazo?`<div class="text-xs text-red-600 mt-1">${escHtml(s.motivoRechazo)}</div>`:''}`;
+  return '<span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-semibold">⏳ Pendiente</span>';
+}
+
+window.renderSolicitudes = function() {
+  const esAdmin = estado.rol === 'admin';
+  document.getElementById('btn-nueva-solicitud').classList.toggle('hidden', esAdmin);
+  document.getElementById('titulo-solicitudes').textContent = esAdmin ? '⏳ Préstamos por Aprobar' : '📝 Mis Préstamos Registrados';
+  document.getElementById('desc-solicitudes').textContent = esAdmin
+    ? 'Préstamos registrados por los cobradores. No cuentan en la cartera hasta que los apruebes.'
+    : 'Los préstamos que registres quedan pendientes hasta que el administrador los apruebe.';
+  const f = window.filtroSolicitudes || 'pendiente';
+  ['pendiente','aprobada','rechazada','todas'].forEach(k => {
+    const b = document.getElementById('fs-'+k);
+    if (b) b.className = `px-3 py-1 rounded text-sm font-semibold ${f===k ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700'}`;
+  });
+  let list = [...(estado.solicitudes||[])];
+  if (f !== 'todas') list = list.filter(s => s.estado === f);
+  list.sort((a,b) => (b.createdAtISO||'').localeCompare(a.createdAtISO||''));
+  const tbody = document.getElementById('tabla-solicitudes');
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400">${f==='pendiente'?'No hay préstamos pendientes':'Sin registros'}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((s, i) => {
+    const nombre = s.clienteNuevo ? s.clienteNuevo.nombre : (s.clienteNombre || estado.clientes.find(c=>c.id===s.clienteId)?.nombre || '?');
+    const tagNuevo = s.clienteNuevo ? ' <span class="text-xs bg-emerald-100 text-emerald-700 px-1 rounded">Nuevo</span>' : '';
+    let accion = '';
+    if (s.estado === 'pendiente' && esAdmin) accion = `<button onclick="abrirAprobacion('${s.id}')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded text-xs font-semibold">🔍 Revisar</button>`;
+    else if (s.estado === 'aprobada' && s.prestamoId && estado.prestamos.some(p=>p.id===s.prestamoId)) accion = `<button onclick="verDetallePrestamo('${s.prestamoId}')" class="text-emerald-600 hover:underline text-xs">👁️ Ver préstamo</button>`;
+    return `<tr class="border-b hover:bg-slate-50 ${s.estado==='pendiente'?'bg-amber-50':''}">
+      <td class="p-3 text-center text-slate-500 font-semibold">${i+1}</td>
+      <td class="p-3 text-center text-xs">${fechaHoraISO(s.createdAtISO)}</td>
+      <td class="p-3"><div class="font-semibold">${escHtml(nombre)}${tagNuevo}</div>${badgeTipo(s.tipoCobro)}</td>
+      <td class="p-3 text-xs text-slate-600">${escHtml(s.solicitadoNombre||'')}</td>
+      <td class="p-3 text-right">${fmt(s.monto)}</td>
+      <td class="p-3 text-right">${fmt(s.totalAPagar)}</td>
+      <td class="p-3 text-right text-xs">${fmt(s.cuotaDiaria)} x ${s.numCuotas}</td>
+      <td class="p-3 text-center">${badgeSolicitud(s)}</td>
+      <td class="p-3 text-center">${accion}</td>
+    </tr>`;
+  }).join('');
+};
+
+// ---------- Cobrador: registrar ----------
+window.abrirModalSolicitud = function() {
+  document.getElementById('form-solicitud').reset();
+  const sel = document.getElementById('sol-cliente');
+  sel.innerHTML = '<option value="">-- Selecciona --</option>' +
+    [...estado.clientes].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).map(c=>`<option value="${c.id}">${escHtml(c.nombre)}${c.cedula?' - '+escHtml(c.cedula):''}</option>`).join('');
+  document.getElementById(estado.clientes.length ? 'sol-modo-existente' : 'sol-modo-nuevo').checked = true;
+  document.getElementById('sol-cuotas').value = estado.config.cuotas || 30;
+  document.getElementById('sol-interes-pct').value = estado.config.interes || 20;
+  toggleSolCliente();
+  calcularPreviewSolicitud();
+  abrirModal('modal-solicitud');
+};
+
+window.toggleSolCliente = function() {
+  const nuevo = document.getElementById('sol-modo-nuevo').checked;
+  document.getElementById('sol-cli-existente').classList.toggle('hidden', nuevo);
+  document.getElementById('sol-cli-nuevo').classList.toggle('hidden', !nuevo);
+  if (nuevo) setTimeout(() => document.getElementById('sol-cn-nombre').focus(), 50);
+};
+
+window.solInteresDesde = function(origen) {
+  const monto = parseFloat(document.getElementById('sol-monto').value)||0;
+  if (monto > 0) {
+    if (origen === 'pesos') {
+      const pesos = parseFloat(document.getElementById('sol-interes-pesos').value)||0;
+      document.getElementById('sol-interes-pct').value = pesos > 0 ? ((pesos/monto)*100).toFixed(2) : '';
+    } else {
+      const pct = parseFloat(document.getElementById('sol-interes-pct').value)||0;
+      document.getElementById('sol-interes-pesos').value = pct > 0 ? Math.round((pct/100)*monto) : '';
+    }
+  }
+  calcularPreviewSolicitud();
+};
+
+window.calcularPreviewSolicitud = function() {
+  const monto = parseFloat(document.getElementById('sol-monto').value)||0;
+  const cuotas = parseInt(document.getElementById('sol-cuotas').value)||0;
+  const v = calcularValoresPrestamo(monto, parseFloat(document.getElementById('sol-interes-pesos').value)||0, parseFloat(document.getElementById('sol-interes-pct').value)||0, cuotas);
+  const tipo = document.getElementById('sol-tipo').value;
+  const etiq = tipo==='semanal'?'Cuota semanal':tipo==='quincenal'?'Cuota quincenal':'Cuota diaria';
+  document.getElementById('sol-preview').innerHTML = monto <= 0 ? '<span class="text-slate-400">Escribe el monto para ver el cálculo</span>' : `
+    <div class="grid grid-cols-2 gap-2">
+      <div>💰 <strong>Total a pagar:</strong> ${fmt(v.total)}</div>
+      <div>📅 <strong>${etiq}:</strong> ${fmt(v.cuota)}</div>
+      <div>💵 <strong>Interés ($):</strong> ${fmt(v.interesReal)}</div>
+      <div>📊 <strong>Interés (%):</strong> ${v.pct.toFixed(1)}%</div>
+    </div>`;
+};
+
+document.getElementById('form-solicitud').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const esNuevo = document.getElementById('sol-modo-nuevo').checked;
+  let clienteId = null, clienteNombre = '', clienteNuevo = null;
+  if (esNuevo) {
+    const cn = {
+      nombre: document.getElementById('sol-cn-nombre').value.trim(),
+      cedula: document.getElementById('sol-cn-cedula').value.trim(),
+      telefono: document.getElementById('sol-cn-telefono').value.trim(),
+      telefono2: document.getElementById('sol-cn-telefono2').value.trim(),
+      direccion: document.getElementById('sol-cn-direccion').value.trim(),
+      ocupacion: document.getElementById('sol-cn-ocupacion').value.trim(),
+      referencias: document.getElementById('sol-cn-referencias').value.trim()
+    };
+    if (!cn.nombre) return alert('El nombre del cliente es obligatorio');
+    const dup = buscarClienteDuplicado(cn.nombre, cn.cedula);
+    if (dup && confirm(`Ya existe un cliente registrado como "${dup.nombre}"${dup.cedula?' (cédula '+dup.cedula+')':''}.\n\n¿Es el mismo cliente? Aceptar = usar el existente. Cancelar = registrarlo como nuevo.`)) {
+      clienteId = dup.id; clienteNombre = dup.nombre;
+    } else {
+      clienteNuevo = cn; clienteNombre = cn.nombre;
+    }
+  } else {
+    clienteId = document.getElementById('sol-cliente').value;
+    if (!clienteId) return alert('Selecciona el cliente');
+    clienteNombre = estado.clientes.find(c=>c.id===clienteId)?.nombre || '';
+  }
+  const monto = parseFloat(document.getElementById('sol-monto').value)||0;
+  const numCuotas = parseInt(document.getElementById('sol-cuotas').value)||0;
+  if (monto <= 0 || numCuotas <= 0) return alert('Revisa el monto y el número de cuotas');
+  const v = calcularValoresPrestamo(monto, parseFloat(document.getElementById('sol-interes-pesos').value)||0, parseFloat(document.getElementById('sol-interes-pct').value)||0, numCuotas);
+  const tipoCobro = document.getElementById('sol-tipo').value;
+  const btn = document.getElementById('btn-guardar-solicitud');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await addDoc(collection(dbFS, 'solicitudes'), {
+      tipo: 'nuevo_prestamo', estado: 'pendiente',
+      clienteId, clienteNombre, clienteNuevo,
+      monto, interes: v.pct, interesPesos: v.interesReal, totalAPagar: v.total,
+      cuotaDiaria: v.cuota, numCuotas, tipoCobro,
+      notas: document.getElementById('sol-notas').value.trim(),
+      solicitadoPor: estado.user.uid, solicitadoNombre: estado.nombre || '',
+      createdAt: serverTimestamp(), createdAtISO: new Date().toISOString()
+    });
+    await auditar('registrar_prestamo_pendiente', `Cliente: ${clienteNombre}${clienteNuevo?' (nuevo)':''}, Monto: ${fmt(monto)}, Tipo: ${tipoCobro}`);
+    cerrarModal('modal-solicitud');
+    window.filtroSolicitudes = 'pendiente';
+    renderSolicitudes();
+    alert(`✅ Préstamo registrado con éxito\n\nCliente: ${clienteNombre}\nMonto: ${fmt(monto)}\n\nQueda pendiente de aprobación del administrador.`);
+  } catch(err) { alert('Error al registrar: ' + err.message); }
+  btn.disabled = false; btn.textContent = '💾 Registrar Préstamo';
+});
+
+// ---------- Admin: revisar, aprobar o rechazar ----------
+window.abrirAprobacion = function(id) {
+  if (estado.rol !== 'admin') return;
+  const s = estado.solicitudes.find(x => x.id === id);
+  if (!s) return;
+  if (s.estado !== 'pendiente') return alert('Esta solicitud ya fue procesada.');
+  document.getElementById('apr-id').value = id;
+  document.getElementById('apr-info').innerHTML = `
+    <div>📝 Registrado por <strong>${escHtml(s.solicitadoNombre||'?')}</strong> el ${fechaHoraISO(s.createdAtISO)}</div>
+    <div class="text-xs text-slate-500 mt-1">Original: ${fmt(s.monto)} → ${fmt(s.totalAPagar)} en ${s.numCuotas} cuotas de ${fmt(s.cuotaDiaria)} (${s.tipoCobro})</div>`;
+
+  const box = document.getElementById('apr-cliente-box');
+  if (s.clienteNuevo) {
+    const cn = s.clienteNuevo;
+    const dup = buscarClienteDuplicado(cn.nombre, cn.cedula);
+    box.innerHTML = `
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">👤 Cliente nuevo (revisa los datos)</div>
+      ${dup ? `<div class="bg-red-50 border border-red-300 rounded p-3 mb-3 text-sm">
+        ⚠️ Ya existe un cliente parecido: <strong>${escHtml(dup.nombre)}</strong>${dup.cedula?' — Céd. '+escHtml(dup.cedula):''}${dup.telefono?' — Tel. '+escHtml(dup.telefono):''}
+        <label class="flex items-center gap-2 mt-2 cursor-pointer"><input type="checkbox" id="apr-usar-existente" value="${dup.id}" checked onchange="document.getElementById('apr-cn-campos').classList.toggle('hidden', this.checked)" class="w-5 h-5 accent-red-600" /> <span class="font-semibold">Usar el cliente existente (no crear duplicado)</span></label>
+      </div>` : ''}
+      <div id="apr-cn-campos" class="${dup?'hidden':''} bg-emerald-50 border border-emerald-200 rounded p-3 grid md:grid-cols-2 gap-3">
+        <div class="md:col-span-2"><label class="block text-xs font-semibold mb-1">Nombre *</label><input type="text" id="apr-cn-nombre" class="w-full p-2 border rounded" value="${escHtml(cn.nombre)}" /></div>
+        <div><label class="block text-xs font-semibold mb-1">Cédula</label><input type="text" id="apr-cn-cedula" class="w-full p-2 border rounded" value="${escHtml(cn.cedula)}" /></div>
+        <div><label class="block text-xs font-semibold mb-1">Teléfono</label><input type="tel" id="apr-cn-telefono" class="w-full p-2 border rounded" value="${escHtml(cn.telefono)}" /></div>
+        <div><label class="block text-xs font-semibold mb-1">Teléfono Alterno</label><input type="tel" id="apr-cn-telefono2" class="w-full p-2 border rounded" value="${escHtml(cn.telefono2)}" /></div>
+        <div><label class="block text-xs font-semibold mb-1">Dirección</label><input type="text" id="apr-cn-direccion" class="w-full p-2 border rounded" value="${escHtml(cn.direccion)}" /></div>
+        <div class="md:col-span-2"><label class="block text-xs font-semibold mb-1">Ocupación</label><input type="text" id="apr-cn-ocupacion" class="w-full p-2 border rounded" value="${escHtml(cn.ocupacion)}" /></div>
+        <div class="md:col-span-2"><label class="block text-xs font-semibold mb-1">Referencias</label><textarea id="apr-cn-referencias" rows="2" class="w-full p-2 border rounded">${escHtml(cn.referencias)}</textarea></div>
+      </div>`;
+  } else {
+    const c = estado.clientes.find(x => x.id === s.clienteId);
+    box.innerHTML = c ? `
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">👤 Cliente existente</div>
+      <div class="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm">
+        <strong>${escHtml(c.nombre)}</strong>${c.clavo?' <span class="text-xs bg-red-100 text-red-700 px-1 rounded">📌 Clavo</span>':''}<br>
+        Céd: ${escHtml(c.cedula||'-')} · Tel: ${escHtml(c.telefono||'-')} · Score: <span class="${(_scoreCache[c.id]||{}).clase||''}">${(_scoreCache[c.id]||{}).score||'-'}</span><br>
+        Préstamos activos: ${estado.prestamos.filter(p=>p.clienteId===c.id && ['activo','mora'].includes(estadoPrestamo(p))).length}
+      </div>` : `<div class="bg-red-50 border border-red-300 rounded p-3 text-sm text-red-700">⚠️ El cliente "${escHtml(s.clienteNombre)}" ya no existe en el sistema. Rechaza esta solicitud.</div>`;
+  }
+
+  document.getElementById('apr-tipo').value = s.tipoCobro || 'diario';
+  document.getElementById('apr-fecha').value = hoy();
+  document.getElementById('apr-monto').value = s.monto;
+  document.getElementById('apr-cuotas').value = s.numCuotas;
+  document.getElementById('apr-interes-pesos').value = s.interesPesos || Math.round((s.totalAPagar||0) - (s.monto||0)) || '';
+  document.getElementById('apr-interes-pct').value = s.interes ? Number(s.interes).toFixed(2) : '';
+  document.getElementById('apr-notas').value = s.notas || '';
+  calcularPreviewAprobacion();
+  abrirModal('modal-aprobar');
+};
+
+window.aprInteresDesde = function(origen) {
+  const monto = parseFloat(document.getElementById('apr-monto').value)||0;
+  if (monto > 0) {
+    if (origen === 'pesos') {
+      const pesos = parseFloat(document.getElementById('apr-interes-pesos').value)||0;
+      document.getElementById('apr-interes-pct').value = pesos > 0 ? ((pesos/monto)*100).toFixed(2) : '';
+    } else {
+      const pct = parseFloat(document.getElementById('apr-interes-pct').value)||0;
+      document.getElementById('apr-interes-pesos').value = pct > 0 ? Math.round((pct/100)*monto) : '';
+    }
+  }
+  calcularPreviewAprobacion();
+};
+
+window.calcularPreviewAprobacion = function() {
+  const monto = parseFloat(document.getElementById('apr-monto').value)||0;
+  const cuotas = parseInt(document.getElementById('apr-cuotas').value)||0;
+  const tipo = document.getElementById('apr-tipo').value;
+  const fecha = document.getElementById('apr-fecha').value || hoy();
+  const v = calcularValoresPrestamo(monto, parseFloat(document.getElementById('apr-interes-pesos').value)||0, parseFloat(document.getElementById('apr-interes-pct').value)||0, cuotas);
+  document.getElementById('apr-preview').innerHTML = monto <= 0 ? '' : `
+    <div class="grid grid-cols-2 gap-2">
+      <div>💰 <strong>Total a pagar:</strong> ${fmt(v.total)}</div>
+      <div>📅 <strong>Cuota:</strong> ${fmt(v.cuota)} x ${cuotas}</div>
+      <div>💵 <strong>Interés ($):</strong> ${fmt(v.interesReal)}</div>
+      <div>📊 <strong>Interés (%):</strong> ${v.pct.toFixed(1)}%</div>
+      <div class="col-span-2">🗓️ <strong>Vence:</strong> ${cuotas>0?fechaBonita(calcFechaVenceTipo(fecha, cuotas, tipo)):'-'}</div>
+    </div>`;
+};
+
+document.getElementById('form-aprobar').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (estado.rol !== 'admin') return;
+  const id = document.getElementById('apr-id').value;
+  const s = estado.solicitudes.find(x => x.id === id);
+  if (!s || s.estado !== 'pendiente') return alert('Esta solicitud ya fue procesada.');
+  const monto = parseFloat(document.getElementById('apr-monto').value)||0;
+  const numCuotas = parseInt(document.getElementById('apr-cuotas').value)||0;
+  const tipoCobro = document.getElementById('apr-tipo').value;
+  const fechaDes = document.getElementById('apr-fecha').value;
+  const notas = document.getElementById('apr-notas').value.trim();
+  if (monto <= 0 || numCuotas <= 0 || !fechaDes) return alert('Revisa monto, cuotas y fecha');
+  const v = calcularValoresPrestamo(monto, parseFloat(document.getElementById('apr-interes-pesos').value)||0, parseFloat(document.getElementById('apr-interes-pct').value)||0, numCuotas);
+
+  // Resolver cliente
+  let clienteId = s.clienteId, clienteNombre = s.clienteNombre || '';
+  let crearCliente = null;
+  if (s.clienteNuevo) {
+    const cbExist = document.getElementById('apr-usar-existente');
+    if (cbExist && cbExist.checked) {
+      clienteId = cbExist.value;
+      clienteNombre = estado.clientes.find(c=>c.id===clienteId)?.nombre || '';
+    } else {
+      crearCliente = {
+        nombre: document.getElementById('apr-cn-nombre').value.trim(),
+        cedula: document.getElementById('apr-cn-cedula').value.trim(),
+        telefono: document.getElementById('apr-cn-telefono').value.trim(),
+        telefono2: document.getElementById('apr-cn-telefono2').value.trim(),
+        direccion: document.getElementById('apr-cn-direccion').value.trim(),
+        ocupacion: document.getElementById('apr-cn-ocupacion').value.trim(),
+        referencias: document.getElementById('apr-cn-referencias').value.trim(),
+        notas: '', clavo: false
+      };
+      if (!crearCliente.nombre) return alert('El nombre del cliente es obligatorio');
+      clienteNombre = crearCliente.nombre;
+    }
+  } else if (!estado.clientes.some(c => c.id === clienteId)) {
+    return alert('El cliente de esta solicitud ya no existe. Recházala.');
+  }
+
+  // Detectar ajustes hechos por el admin
+  const cambios = [];
+  if (monto !== s.monto) cambios.push(`monto ${fmt(s.monto)}→${fmt(monto)}`);
+  if (Math.round(v.total) !== Math.round(s.totalAPagar)) cambios.push(`total ${fmt(s.totalAPagar)}→${fmt(v.total)}`);
+  if (numCuotas !== s.numCuotas) cambios.push(`cuotas ${s.numCuotas}→${numCuotas}`);
+  if (tipoCobro !== s.tipoCobro) cambios.push(`tipo ${s.tipoCobro}→${tipoCobro}`);
+
+  if (!confirm(`¿Aprobar este préstamo?\n\n👤 ${clienteNombre}${crearCliente?' (se crea como cliente nuevo)':''}\n💰 Capital: ${fmt(monto)}\n📋 Total: ${fmt(v.total)} en ${numCuotas} cuotas de ${fmt(v.cuota)}\n📅 Desembolso: ${fechaBonita(fechaDes)}${cambios.length?'\n\n✏️ Ajustes: '+cambios.join(', '):''}`)) return;
+
+  const btn = document.getElementById('btn-aprobar');
+  btn.disabled = true; btn.textContent = 'Aprobando...';
+  try {
+    if (crearCliente) {
+      const refCli = await addDoc(collection(dbFS, 'clientes'), {
+        ...crearCliente,
+        createdAt: serverTimestamp(), createdBy: s.solicitadoPor, aprobadoPor: estado.user.uid
+      });
+      clienteId = refCli.id;
+      await auditar('crear_cliente', `Cliente: ${clienteNombre} (registrado por ${s.solicitadoNombre}, aprobado por ${estado.nombre})`);
+    }
+    const cuotas = tipoCobro === 'semanal' ? generarCuotasSemanales(fechaDes, v.cuota, numCuotas)
+                 : tipoCobro === 'quincenal' ? generarCuotasQuincenales(fechaDes, v.cuota, numCuotas)
+                 : generarCuotas(fechaDes, v.cuota, numCuotas);
+    const refP = await addDoc(collection(dbFS, 'prestamos'), {
+      clienteId, clienteNombre,
+      monto, interes: v.pct, totalAPagar: v.total, cuotaDiaria: v.cuota, numCuotas, tipoCobro,
+      fechaDesembolso: fechaDes, fechaVence: calcFechaVenceTipo(fechaDes, numCuotas, tipoCobro),
+      cuotas, estado: 'activo', notas,
+      solicitudId: id, solicitadoPor: s.solicitadoPor, solicitadoNombre: s.solicitadoNombre || '',
+      createdAt: serverTimestamp(), createdBy: estado.user.uid
+    });
+    await updateDoc(doc(dbFS, 'solicitudes', id), {
+      estado: 'aprobada', prestamoId: refP.id, clienteIdFinal: clienteId,
+      aprobadoPor: estado.user.uid, aprobadoNombre: estado.nombre || '',
+      aprobadoAt: serverTimestamp(), aprobadoAtISO: new Date().toISOString(),
+      ajustesAprobacion: cambios.join(', ')
+    });
+    await auditar('aprobar_prestamo', `Cliente: ${clienteNombre}, Monto: ${fmt(monto)}, Registrado por: ${s.solicitadoNombre}${cambios.length?', Ajustes: '+cambios.join(', '):''}`);
+    cerrarModal('modal-aprobar');
+    alert('✅ Préstamo aprobado. Ya está activo en la cartera y en Pagos del Día.');
+  } catch(err) { alert('Error al aprobar: ' + err.message); }
+  btn.disabled = false; btn.textContent = '✅ Aprobar Préstamo';
+});
+
+window.rechazarSolicitud = async function() {
+  if (estado.rol !== 'admin') return;
+  const id = document.getElementById('apr-id').value;
+  const s = estado.solicitudes.find(x => x.id === id);
+  if (!s || s.estado !== 'pendiente') return alert('Esta solicitud ya fue procesada.');
+  const motivo = prompt('Motivo del rechazo (el cobrador lo verá):', '');
+  if (motivo === null) return;
+  try {
+    await updateDoc(doc(dbFS, 'solicitudes', id), {
+      estado: 'rechazada', motivoRechazo: motivo.trim(),
+      rechazadoPor: estado.user.uid, rechazadoNombre: estado.nombre || '',
+      rechazadoAt: serverTimestamp(), rechazadoAtISO: new Date().toISOString()
+    });
+    const nombre = s.clienteNuevo ? s.clienteNuevo.nombre : s.clienteNombre;
+    await auditar('rechazar_prestamo', `Cliente: ${nombre}, Monto: ${fmt(s.monto)}, Registrado por: ${s.solicitadoNombre}${motivo.trim()?', Motivo: '+motivo.trim():''}`);
+    cerrarModal('modal-aprobar');
+  } catch(err) { alert('Error al rechazar: ' + err.message); }
+};
 
 // ============================================================
 // GASTOS
