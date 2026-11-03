@@ -3396,7 +3396,16 @@ window.verDetallePrestamo = function(id) {
     <table class="w-full text-xs border"><thead class="bg-slate-200"><tr>
       <th class="p-2">#</th><th class="p-2 text-right">Abono</th><th class="p-2 text-right">Resta</th><th class="p-2 text-center">Fecha Pago</th><th class="p-2">Registrado por</th><th class="p-2">Nota</th><th class="p-2 no-print">Acción</th>
     </tr></thead><tbody>`;
-  (p.cuotas||[]).forEach(c => {
+  // Ordenar: pagadas/parciales por fechaPago asc, luego pendientes/no_pago en orden original
+  const cuotasOrdenadas = [...(p.cuotas||[])].sort((a, b) => {
+    const aPagada = a.estado === 'pagado' || a.estado === 'parcial';
+    const bPagada = b.estado === 'pagado' || b.estado === 'parcial';
+    if (aPagada && bPagada) return (a.fechaPago||'') < (b.fechaPago||'') ? -1 : 1;
+    if (aPagada) return -1;
+    if (bPagada) return 1;
+    return a.numero - b.numero;
+  });
+  cuotasOrdenadas.forEach(c => {
     const abono = c.montoPagado||0;
     if (c.estado === 'pagado' || c.estado === 'parcial') saldoAcumulado -= abono;
     const esPendiente = c.estado === 'pendiente' || c.estado === 'no_pago';
